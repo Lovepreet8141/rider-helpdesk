@@ -1,0 +1,272 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Quickzi Rider Helpdesk</title>
+<style>
+  :root{--bg:#f4f4f2;--card:#fff;--ink:#17171a;--muted:#6c6c72;--line:#e3e3df;--soft:#f0f0ee;--red:#d2322a;--red-bg:#fdeceb;--amber:#b86a00;--amber-bg:#fff3df;--green:#1c7c45;--green-bg:#e6f4ec;--blue:#2455c9;--blue-bg:#e8eefc;--accent:#6f3ff5}
+  @media(prefers-color-scheme:dark){:root{--bg:#121214;--card:#1b1b1f;--ink:#ececf1;--muted:#9a9aa3;--line:#2b2b31;--soft:#232328;--red:#ff6e63;--red-bg:#3a1c19;--amber:#ffb454;--amber-bg:#3a2a12;--green:#5fd48d;--green-bg:#15301f;--blue:#7ea2ff;--blue-bg:#1c2540;--accent:#a98bff}}
+  *{box-sizing:border-box} body{margin:0;background:var(--bg);color:var(--ink);font:14px/1.45 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif}
+  header{position:sticky;top:0;z-index:9;background:var(--bg);border-bottom:1px solid var(--line);padding:8px 16px;display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+  header h1{font-size:16px;margin:0;white-space:nowrap} .sp{flex:1}
+  nav{display:flex;gap:2px;flex-wrap:wrap} nav a{padding:6px 11px;border-radius:8px;color:var(--muted);text-decoration:none;font-weight:600;font-size:13px;cursor:pointer} nav a.active{background:var(--ink);color:var(--bg)}
+  .muted{color:var(--muted);font-size:12px}
+  button{font:inherit;font-size:13px;border:1px solid var(--line);background:var(--card);color:var(--ink);border-radius:8px;padding:6px 11px;cursor:pointer}
+  .primary{background:var(--ink)!important;color:var(--bg)!important;border-color:var(--ink)!important}
+  input,select,textarea{font:inherit;font-size:13px;border:1px solid var(--line);background:var(--card);color:var(--ink);border-radius:8px;padding:6px 9px;max-width:100%}
+  textarea{width:100%;min-height:74px;resize:vertical}
+  main{max-width:1200px;margin:0 auto;padding:14px 16px 60px} section{display:none} section.active{display:block}
+  h2{font-size:12px;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);margin:22px 0 10px}
+  .pulse{display:grid;grid-template-columns:repeat(4,1fr);gap:10px} @media(max-width:700px){.pulse{grid-template-columns:repeat(2,1fr)}}
+  .tile{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:12px} .tile .l{font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted)} .tile .v{font-size:26px;font-weight:700;line-height:1.1;margin-top:2px} .tile .s{font-size:12px;color:var(--muted)}
+  .panel{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:12px 14px;margin-top:12px;overflow-x:auto}
+  .row{border:1px solid var(--line);background:var(--card);border-left:5px solid var(--muted);border-radius:12px;padding:10px 14px;margin-bottom:8px;cursor:pointer}
+  .row.auto{border-left-color:var(--green)} .row.esc{border-left-color:var(--amber)} .row.urgent{border-left-color:var(--red)} .row.silent{border-left-color:var(--line)}
+  .row .top{display:flex;gap:8px;align-items:center;flex-wrap:wrap} .row .msg{margin-top:4px} .row .rep{margin-top:4px;color:var(--muted);font-size:13px;white-space:pre-wrap}
+  .tag{display:inline-block;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;border-radius:5px;padding:2px 7px}
+  .tag.green{background:var(--green-bg);color:var(--green)} .tag.amber{background:var(--amber-bg);color:var(--amber)} .tag.red{background:var(--red-bg);color:var(--red)} .tag.grey{background:var(--soft);color:var(--muted)} .tag.blue{background:var(--blue-bg);color:var(--blue)}
+  table{width:100%;border-collapse:collapse} th,td{padding:7px 6px;border-bottom:1px solid var(--line);text-align:left;font-size:13px;vertical-align:top} th{font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:var(--muted)}
+  pre{background:var(--soft);border-radius:8px;padding:10px;font-size:12px;white-space:pre-wrap;word-break:break-word;margin:6px 0}
+  .bubble{background:var(--blue-bg);color:var(--ink);border-radius:12px;padding:10px 12px;white-space:pre-wrap;margin:6px 0}
+  .note{background:var(--amber-bg);border-radius:12px;padding:10px 12px;white-space:pre-wrap;margin:6px 0;font-size:13px}
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px} @media(max-width:800px){.grid2{grid-template-columns:1fr}}
+  .form{display:grid;grid-template-columns:1fr 200px;gap:10px 14px;align-items:center} @media(max-width:600px){.form{grid-template-columns:1fr}}
+  .form label{font-size:13px} .form .hint{display:block;color:var(--muted);font-size:12px}
+  .chips{display:flex;gap:6px;flex-wrap:wrap;margin:8px 0} .chips button{border-radius:14px;padding:4px 10px} .chips button.on{background:var(--ink);color:var(--bg)}
+  .banner{background:var(--amber-bg);color:var(--amber);border:1px solid var(--amber);border-radius:10px;padding:8px 12px;margin:10px 0;font-weight:600}
+  .ok{color:var(--green)} .bad{color:var(--red)} .hidden{display:none!important}
+  .toast{position:fixed;bottom:16px;left:50%;transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:8px 14px;border-radius:10px;font-size:13px;opacity:0;transition:.2s} .toast.on{opacity:1}
+</style>
+</head>
+<body>
+<header>
+  <h1>🛵 Rider Helpdesk</h1>
+  <nav id="nav">
+    <a data-t="inbox" class="active">Inbox</a><a data-t="test">Try a message</a><a data-t="riders">Riders</a>
+    <a data-t="replies">Replies</a><a data-t="settings">Settings</a><a data-t="system">System</a>
+  </nav>
+  <span class="sp"></span><span class="muted" id="clock"></span>
+</header>
+<main>
+  <div id="banner"></div>
+
+  <section id="inbox" class="active">
+    <div class="pulse" id="pulse"></div>
+    <div class="chips" id="filters"></div>
+    <div id="rows"></div>
+  </section>
+
+  <section id="test">
+    <h2>Try a message — nothing is sent</h2>
+    <div class="panel">
+      <div class="grid2">
+        <div><label class="muted">Rider</label><br><select id="tRider" style="width:100%"></select></div>
+        <div><label class="muted">Quick examples</label><br><select id="tEx" style="width:100%">
+          <option value="">— pick one —</option>
+          <option>Customer is not answering, nobody opens the door</option>
+          <option>Kunde geht nicht ran, bitte Nummer schicken</option>
+          <option>Food not ready, I'm waiting at the restaurant</option>
+          <option>Restaurant says they don't have the order</option>
+          <option>I can't find the house number</option>
+          <option>App not working, I can't swipe to complete</option>
+          <option>Which order do I have?</option>
+          <option>The drink is spilled in the bag</option>
+          <option>I had an accident</option>
+          <option>When is the salary paid?</option>
+        </select></div>
+      </div>
+      <p><textarea id="tText" placeholder="Type what a rider would write…"></textarea></p>
+      <button class="primary" onclick="runTest()">Show what the bot does</button>
+      <div id="tOut"></div>
+    </div>
+  </section>
+
+  <section id="riders">
+    <h2>Riders seen in MotionTools</h2>
+    <p class="muted">The bot finds the rider from (1) a saved link, (2) an order number in the message, (3) the phone number, (4) the name on the Intercom contact. Matches are saved automatically. If a rider isn't recognised, open his chat in the Inbox and link him by hand.</p>
+    <div class="panel"><table><thead><tr><th>Rider</th><th>City</th><th>Phone</th><th>Now</th><th>Intercom</th></tr></thead><tbody id="rBody"></tbody></table></div>
+    <h2>Link an Intercom contact by hand</h2>
+    <div class="panel">
+      <div class="grid2">
+        <div><label class="muted">Intercom contact id (from the Inbox row)</label><br><input id="lContact" style="width:100%"></div>
+        <div><label class="muted">MotionTools rider</label><br><select id="lRider" style="width:100%"></select></div>
+      </div>
+      <p><button class="primary" onclick="saveLink()">Save link</button> <button onclick="saveLink(true)">Remove link</button></p>
+    </div>
+  </section>
+
+  <section id="replies">
+    <h2>Replies the bot sends</h2>
+    <p class="muted">Placeholders: {name} rider's first name · {ref} order number · {restaurant} · {min} minutes waiting · {phone} customer phone · {orders} order list · {addr_line} address. The bot answers in German when the rider writes German, otherwise in English.</p>
+    <div id="tplList"></div>
+    <p><button class="primary" onclick="saveTemplates()">Save replies</button></p>
+  </section>
+
+  <section id="settings">
+    <h2>Bot</h2>
+    <div class="panel"><div class="form" id="setForm"></div><p><button class="primary" onclick="saveSettings()">Save settings</button></p></div>
+    <h2>City names (MotionTools service-area id → city)</h2>
+    <div class="panel"><p class="muted">One per line: <code>area-id = Munich</code>. Ids seen so far are pre-filled.</p><textarea id="areas" style="min-height:120px"></textarea></div>
+    <h2>Restaurant names (MotionTools place id → name)</h2>
+    <div class="panel"><p class="muted">One per line: <code>place-id = Restaurant name</code>. Copy them from Quickzi Ops → Settings if you already named them there.</p><textarea id="places" style="min-height:160px"></textarea>
+    <p><button class="primary" onclick="saveNames()">Save names</button></p></div>
+  </section>
+
+  <section id="system">
+    <h2>Connections</h2>
+    <div class="panel" id="sys"></div>
+    <h2>Messages that would have been sent (dry run)</h2>
+    <div class="panel" id="outbox"></div>
+  </section>
+</main>
+<div class="toast" id="toast"></div>
+<script>
+let S = null, FILTER = 'all';
+const $ = id => document.getElementById(id);
+const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const tm = v => v ? new Date(v).toLocaleTimeString('de-DE', {hour:'2-digit', minute:'2-digit', timeZone:'Europe/Berlin'}) : '—';
+const dt = v => v ? new Date(v).toLocaleString('de-DE', {day:'2-digit', month:'2-digit', hour:'2-digit', minute:'2-digit', timeZone:'Europe/Berlin'}) : '—';
+const PH = {waiting:'waiting', accepted:'accepted', to_restaurant:'→ restaurant', at_restaurant:'at restaurant', to_customer:'→ customer', at_customer:'at customer'};
+function toast(t){ const e=$('toast'); e.textContent=t; e.classList.add('on'); setTimeout(()=>e.classList.remove('on'), 1800); }
+async function api(path, body){
+  const r = await fetch(path, body ? {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(body)} : {});
+  if (!r.ok) throw new Error(r.status);
+  return r.json();
+}
+document.querySelectorAll('#nav a').forEach(a => a.onclick = () => {
+  document.querySelectorAll('#nav a').forEach(x => x.classList.toggle('active', x === a));
+  document.querySelectorAll('main section').forEach(s => s.classList.toggle('active', s.id === a.dataset.t));
+  try { localStorage.setItem('tab', a.dataset.t); } catch(e) {}
+});
+try { const t = localStorage.getItem('tab'); if (t) document.querySelector(`#nav a[data-t="${t}"]`)?.click(); } catch(e) {}
+
+function kind(h){ const a = h.action || ''; if (a.includes('URGENT')) return 'urgent'; if (a.includes('escalat')) return 'esc'; if (a.startsWith('auto')) return 'auto'; return 'silent'; }
+function renderInbox(){
+  const t = S.today, w = S.week;
+  const pct = t.total ? Math.round(100 * t.solved / t.total) : 0;
+  $('pulse').innerHTML = `
+    <div class="tile"><div class="l">Messages today</div><div class="v">${t.total}</div><div class="s">${w.total} last 7 days</div></div>
+    <div class="tile"><div class="l">Solved by bot</div><div class="v ok">${t.solved}</div><div class="s">${pct}% of messages · bot replied to ${t.auto}</div></div>
+    <div class="tile"><div class="l">Sent to team</div><div class="v" style="color:var(--amber)">${t.escalated}</div><div class="s">${w.escalated} last 7 days</div></div>
+    <div class="tile"><div class="l">Top question today</div><div class="v" style="font-size:15px;margin-top:6px">${esc(S.intent_labels[Object.entries(t.by_intent).sort((a,b)=>b[1]-a[1])[0]?.[0]] || '—')}</div></div>`;
+  const opts = [['all','All'],['esc','Sent to team'],['auto','Bot answered'],['urgent','Urgent'],['unmatched','Rider not recognised']];
+  $('filters').innerHTML = opts.map(([k,l]) => `<button class="${FILTER===k?'on':''}" onclick="FILTER='${k}';renderInbox()">${l}</button>`).join('');
+  const rows = S.handled.filter(h => FILTER==='all' || (FILTER==='unmatched' ? !h.rider_id && h.intent!=='attachment' : FILTER==='esc' ? kind(h)==='esc'||kind(h)==='urgent' : kind(h)===FILTER));
+  $('rows').innerHTML = rows.length ? rows.map((h, i) => {
+    const k = kind(h);
+    const tag = {auto:'<span class="tag green">bot answered</span>', esc:'<span class="tag amber">sent to team</span>', urgent:'<span class="tag red">urgent</span>', silent:'<span class="tag grey">no reply</span>'}[k];
+    const also = k==='auto' && h.action.includes('escalat') ? '' : '';
+    return `<div class="row ${k}" onclick="this.querySelector('.more').classList.toggle('hidden')">
+      <div class="top"><b>${tm(h.at)}</b> ${tag}${h.action.includes('auto-reply') && k!=='auto' ? ' <span class="tag green">+ bot replied</span>' : ''}
+        <span class="tag blue">${esc(S.intent_labels[h.intent] || h.intent)}</span>
+        <span>${esc(h.rider || h.contact_name || 'Unknown rider')}${h.city ? ' · ' + esc(h.city) : ''}${h.order_ref ? ' · order <b>' + esc(h.order_ref) + '</b>' : ''}</span>
+        ${!h.rider_id && h.intent!=='attachment' ? '<span class="tag red">not recognised</span>' : ''}</div>
+      <div class="msg">“${esc(h.message)}”</div>
+      ${h.reply ? `<div class="rep">↳ ${esc(h.reply)}</div>` : ''}
+      <div class="more hidden">
+        ${h.note ? `<div class="note">${esc(h.note)}</div>` : ''}
+        <div class="muted">${dt(h.at)} · action: ${esc(h.action)} · Intercom conversation ${esc(h.conversation_id)} · contact id <b>${esc(h.contact_id)}</b> ${h.contact_id ? `<button onclick="event.stopPropagation();prefillLink('${esc(h.contact_id)}')">Link this contact to a rider</button>` : ''}</div>
+      </div></div>`;
+  }).join('') : '<div class="panel muted">No rider messages yet. As soon as the Intercom webhook is connected, every rider message shows up here.</div>';
+}
+function prefillLink(cid){ $('lContact').value = cid; document.querySelector('#nav a[data-t="riders"]').click(); }
+
+function riderOptions(sel, withNone){
+  const cur = $(sel).value;
+  $(sel).innerHTML = (withNone ? '<option value="">— nobody / unknown —</option>' : '') +
+    S.riders.map(r => `<option value="${esc(r.id)}">${esc(r.name || r.id)}${r.city ? ' · ' + esc(r.city) : ''}${r.live.length ? ' · ' + r.live.length + ' live' : ''}</option>`).join('');
+  if (cur) $(sel).value = cur;
+}
+function renderRiders(){
+  const links = {}; S.links.forEach(l => (links[l.rider_id] = links[l.rider_id] || []).push(l));
+  $('rBody').innerHTML = S.riders.map(r => `<tr><td><b>${esc(r.name || '—')}</b><div class="muted">${esc(r.id)}</div></td><td>${esc(r.city || '—')}</td><td>${esc(r.phone || '—')}</td>
+    <td>${r.live.length ? r.live.map(o => `<span class="tag blue">${esc(o.ref)} · ${PH[o.phase]||o.phase}</span>`).join(' ') : (r.online ? '<span class="ok">online</span>' : '<span class="muted">offline</span>')}</td>
+    <td>${(links[r.id]||[]).map(l => `<div>${esc(l.contact_name || l.contact_id)} <span class="muted">(${esc(l.how)})</span></div>`).join('') || '<span class="muted">not linked yet</span>'}</td></tr>`).join('')
+    || '<tr><td colspan="5" class="muted">No riders yet — they appear with the first MotionTools events.</td></tr>';
+  riderOptions('lRider', true);
+  riderOptions('tRider', true);
+}
+async function saveLink(remove){
+  await api('/api/link', {contact_id: $('lContact').value, rider_id: remove ? '' : $('lRider').value});
+  toast(remove ? 'Link removed' : 'Saved'); load();
+}
+
+function renderTemplates(){
+  if ($('tplList').dataset.done) return;
+  $('tplList').innerHTML = Object.entries(S.template_labels).map(([k, label]) => `<div class="panel"><b>${esc(label)}</b> <span class="muted">${k}</span>
+    <div class="grid2" style="margin-top:6px"><div><span class="muted">English</span><textarea data-k="${k}" data-l="en">${esc(S.templates[k].en)}</textarea></div>
+    <div><span class="muted">Deutsch</span><textarea data-k="${k}" data-l="de">${esc(S.templates[k].de)}</textarea></div></div></div>`).join('');
+  $('tplList').dataset.done = 1;
+}
+async function saveTemplates(){
+  const t = {}; document.querySelectorAll('#tplList textarea').forEach(x => { (t[x.dataset.k] = t[x.dataset.k] || {})[x.dataset.l] = x.value; });
+  await api('/api/settings', {templates: t}); toast('Replies saved');
+}
+const SET = [
+  ['bot_on','Bot answers riders','Off = no replies to riders; notes and hand-over to the team keep working.','bool'],
+  ['reply_unknown','Answer messages the bot doesn\'t understand','Sends “team will reply shortly”.','bool'],
+  ['post_note','Always post an internal note with order context','Even when the bot solved it.','bool'],
+  ['human_quiet_min','Bot stays quiet after a teammate wrote (min)','Stops the bot talking over you.','int'],
+  ['same_intent_min','Don\'t repeat the same answer within (min)','A repeat goes to the team instead.','int'],
+  ['max_replies_per_conv','Max bot replies per chat (3 h)','','int'],
+  ['restaurant_long_min','Waiting at restaurant counts as too long after (min)','Then the team is asked to call the restaurant.','int'],
+  ['escalate_assignee','Assign hand-overs to (Intercom team or admin id)','Empty = leave the chat where it is.','text'],
+  ['urgent_assignee','Assign accidents/emergencies to','Empty = same as above.','text'],
+  ['escalate_tag','Intercom tag id for hand-overs','Optional.','text'],
+  ['mt_order_url','MotionTools order link in notes','e.g. https://quickzii.motiontools.io/…/{id}','text'],
+];
+function renderSettings(){
+  if ($('setForm').dataset.done) return;
+  $('setForm').innerHTML = SET.map(([k, l, h, t]) => `<label>${l}<span class="hint">${h}</span></label>` +
+    (t==='bool' ? `<select data-s="${k}" data-t="bool"><option value="1">On</option><option value="0">Off</option></select>` :
+     `<input data-s="${k}" data-t="${t}" ${t==='int' ? 'type="number" min="0"' : ''}>`)).join('');
+  document.querySelectorAll('[data-s]').forEach(x => { const v = S.settings[x.dataset.s]; x.value = x.dataset.t==='bool' ? (v ? '1' : '0') : (v ?? ''); });
+  const an = {...Object.fromEntries(S.areas_seen.map(a => [a, ''])), ...S.area_names};
+  $('areas').value = Object.entries(an).map(([k, v]) => `${k} = ${v}`).join('\n');
+  const pn = {...Object.fromEntries(S.places_seen.map(a => [a, ''])), ...S.place_names};
+  $('places').value = Object.entries(pn).map(([k, v]) => `${k} = ${v}`).join('\n');
+  $('setForm').dataset.done = 1;
+}
+async function saveSettings(){
+  const s = {}; document.querySelectorAll('[data-s]').forEach(x => s[x.dataset.s] = x.dataset.t==='bool' ? x.value==='1' : x.value);
+  await api('/api/settings', {settings: s}); toast('Settings saved'); load();
+}
+const parseMap = txt => Object.fromEntries(txt.split('\n').map(l => l.split('=')).filter(p => p.length >= 2).map(p => [p[0].trim(), p.slice(1).join('=').trim()]).filter(p => p[0] && p[1]));
+async function saveNames(){ await api('/api/settings', {area_names: parseMap($('areas').value), place_names: parseMap($('places').value)}); toast('Names saved'); }
+
+function renderSystem(){
+  const y = S.system;
+  $('sys').innerHTML = `<table>
+   <tr><td>Intercom</td><td class="${y.intercom==='live'?'ok':'bad'}">${esc(y.intercom)}${y.intercom_me ? ' · token of ' + esc(y.intercom_me.name) + ' (' + esc(y.intercom_me.app||'') + ')' : ''} · replies sent as admin ${esc(y.intercom_admin_id || '—')}</td></tr>
+   <tr><td>Intercom webhook</td><td>${y.ic_events} events · last ${dt(y.ic_last)} · signature check ${y.signature_check ? 'on' : 'off'}${y.rejected.intercom ? ' · <span class="bad">' + y.rejected.intercom + ' rejected</span>' : ''}</td></tr>
+   <tr><td>Intercom errors</td><td>${y.intercom_errors}${y.intercom_last_error ? '<pre>' + esc(y.intercom_last_error) + '</pre>' : ''}</td></tr>
+   <tr><td>MotionTools webhook</td><td>${y.mt_events} events · last ${dt(y.last_mt_event)} · ${y.orders_tracked} orders (${y.live_orders} live) · ${y.riders_known} riders${y.rejected.mt ? ' · <span class="bad">' + y.rejected.mt + ' rejected</span>' : ''}</td></tr>
+   <tr><td>MotionTools API</td><td>${y.mt_token ? esc(y.mt_endpoints) : 'no token — webhooks only'} · customer lookups ${y.detail_fetches} <button onclick="probe()">Re-check</button></td></tr>
+   <tr><td>Event types</td><td class="muted">${Object.entries(y.mt_event_types).map(([k,v]) => esc(k) + ' ' + v).join(' · ') || '—'}</td></tr>
+   <tr><td>Running since</td><td>${dt(y.started)} · v${esc(S.version)}</td></tr></table>
+   ${y.errors.length ? '<h2>Errors</h2>' + y.errors.map(e => `<div class="muted">${dt(e.at)} <span class="bad">${esc(e.msg)}</span></div>`).join('') : ''}`;
+  $('outbox').innerHTML = y.outbox.length ? y.outbox.map(o => `<pre>${dt(o.at)} ${esc(o.method)} ${esc(o.path)}\n${esc(JSON.stringify(o.json, null, 1))}</pre>`).join('') : '<span class="muted">Nothing — ' + (y.intercom==='live' ? 'Intercom is live, messages go out for real.' : 'no messages yet.') + '</span>';
+  $('banner').innerHTML = (y.intercom !== 'live' ? '<div class="banner">Dry run — INTERCOM_TOKEN is not set, nothing is sent to riders. See System.</div>' : '') +
+    (!S.settings.bot_on ? '<div class="banner">Bot replies are switched OFF (Settings) — only notes and hand-overs.</div>' : '');
+}
+async function probe(){ const r = await api('/api/probe', {}); toast(r.summary); load(); }
+
+async function runTest(){
+  const r = await api('/api/test', {text: $('tText').value, rider_id: $('tRider').value});
+  $('tOut').innerHTML = `<h2>Detected: ${esc(r.intent_label || r.intent)} · ${r.lang==='de'?'Deutsch':'English'}${r.order ? ' · order ' + esc(r.order) : ''}</h2>
+    ${r.reply ? `<div class="muted">Reply to the rider:</div><div class="bubble">${esc(r.reply)}</div>` : `<div class="muted">No reply to the rider${r.reason ? ' — ' + esc(r.reason) : ''}.</div>`}
+    ${r.escalate ? `<p><span class="tag ${r.urgent?'red':'amber'}">${r.urgent?'urgent — ':''}handed to the team</span></p>` : '<p><span class="tag green">solved by the bot</span></p>'}
+    ${r.note ? `<div class="muted">Internal note in Intercom:</div><div class="note">${esc(r.note)}</div>` : ''}`;
+}
+$('tEx').onchange = e => { if (e.target.value) { $('tText').value = e.target.value; runTest(); } };
+
+async function load(){
+  try { S = await api('/api/state'); } catch(e) { $('banner').innerHTML = '<div class="banner">Can\'t reach the server.</div>'; return; }
+  $('clock').textContent = 'updated ' + tm(S.now);
+  renderInbox(); renderRiders(); renderTemplates(); renderSettings(); renderSystem();
+}
+load(); setInterval(load, 20000);
+</script>
+</body>
+</html>
