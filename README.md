@@ -1,4 +1,4 @@
-# Quickzi Rider Helpdesk — Intercom ↔ MotionTools (v1.0)
+# Quickzi Rider Helpdesk — Intercom ↔ MotionTools (v1.2)
 
 Riders write to Quickzi in Intercom. This service reads every rider message, matches the rider and his live order from
 MotionTools, and
@@ -22,11 +22,18 @@ It is separate from Quickzi Ops: it has its own repo, its own Railway service an
 | "Which order do I have? / status" | Lists his live orders with stage and deadline | No |
 | "App not working / can't swipe" | 3 first steps (restart, GPS, re-login) | Only if he writes again |
 | Food spilled / missing / wrong | "Send a photo, don't leave yet" | **Yes** |
+| **"I don't want to wait / take this order off me / ich will nicht mehr warten"** | "Team is giving order *ref* to another rider, wait for confirmation" | **Yes**: note says **REDISPATCH order *ref*** (+ minutes waited) |
+| …then your team redispatches in MotionTools | Bot tells the rider automatically: "Done ✅ order *ref* is off you, you're free" | No |
+| Same, but he already picked the food up | "Already picked up, please deliver it" | **Yes** |
 | Customer cancelled / what to do with food | "Team will tell you, wait here" | **Yes** |
 | Accident / police / flat tyre / bike broken | "Are you OK? Call 112 if hurt" | **Yes, URGENT** |
 | Shift / salary / sick / hours | "Goes to the ops team" | **Yes** |
 | "Hi" / "Danke" | Greeting / nothing | No |
 | Anything else | Nothing (optional "team will reply") | **Yes** |
+
+> **Redispatching itself is done by your team in MotionTools.** Your restricted API token can't change orders, so the
+> bot handles everything around it: it recognises the request, tells the team exactly which order to redispatch, and closes the loop
+> with the rider as soon as MotionTools shows the order went back to the pool or to another rider.
 
 **Safety rules built in**
 - When a teammate has written in the chat in the last 20 min, the bot stays quiet. Accidents are the exception.
@@ -47,6 +54,24 @@ chat to the team. You can link a rider by hand in the dashboard.
 > read automatically. The bot therefore tells the rider to wait and gives the team everything else in one note. If
 > MotionTools ever opens `GET /api/bookings/{id}` for your token, set `MT_API_TOKEN`. The bot then sends the number
 > itself, with no code change.
+
+## MotionTools robot (v1.2) — customer numbers automatically
+Your restricted mode only blocks the **API token**. A **signed-in dashboard user** can read the same order data the web
+dashboard shows: `GET /api/hailing/bookings/{id}` was tested on 4 Oct with a live Hamburg order and returned the
+drop-off contact. So the robot signs in as its own MotionTools user using the documented
+`/api/signin` and `/api/refresh_token`, and looks up **only the order a rider is asking about**.
+- Rider: "customer not answering" → bot replies within seconds with the customer's number + "call again, wait 5 min".
+  Solved, no teammate needed. The note also shows the address.
+- Max 40 lookups per hour (`MT_ROBOT_HOURLY_LIMIT`). One lookup per order, then it's cached.
+- If sign-in fails, everything falls back to the team-fetches-number flow. You can see the status under System → MotionTools robot.
+
+**Setup:** in MotionTools → Drivers/Users, create a separate operator user for the robot (e.g. `robot@…`, with the
+same role your dispatchers have). Never use your own login. Add to Railway:
+`MT_ROBOT_EMAIL`, `MT_ROBOT_PASSWORD` (optional `MT_ROBOT_HOURLY_LIMIT=40`).
+
+**Redispatch is not automated yet.** The dashboard has an "unclaim" action on tours (takes the order off the rider),
+but its exact request has not been checked. It will be added after one real redispatch in the dashboard has been
+observed, so the robot only sends what the dashboard sends.
 
 ## Dashboard — `/help`
 **Inbox** shows every rider message and what happened: solved by the bot, sent to the team, or urgent. The other tabs:
@@ -118,11 +143,12 @@ Leave your existing Quickzi Ops webhooks as they are.
 ## Files
 `app.py` server and webhooks · `brain.py` question detection and replies · `tracker.py` orders and riders from MotionTools events ·
 `intercom.py` Intercom client · `mt.py` MotionTools client (same as Quickzi Ops) · `store.py` SQLite · `help.html` dashboard ·
-`test_local.py` full local test
+`robot.py` MotionTools robot login · `test_local.py` full local test · `test_robot.py` robot test
 
 ## Test locally
 ```
 pip install -r requirements.txt
-python3 test_local.py           # 22 checks: matching, replies, hand-overs, repeats, urgent, signature, teammate takeover
+python3 test_local.py           # 29 checks: matching, replies, hand-overs, repeats, urgent, signature, teammate takeover, hand-back + confirmation
+python3 test_robot.py           # 7 checks: robot sign-in, re-sign-in, customer number to rider, caching
 python3 test_local.py --serve   # then open http://127.0.0.1:8031/help (password: test)
 ```

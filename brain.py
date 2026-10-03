@@ -57,7 +57,15 @@ RULES = [
     # --- food damaged / items missing / wrong order
     ("problem_food", 4, r"\b(spill\w*|damag\w*|broken|crushed|leak\w*|kaputt|ausgelaufen|verschuett\w*|beschaedigt|zerdrueckt)\b"),
     ("problem_food", 3, r"\b(missing|fehlt|fehlen|wrong (order|food|item|bag)|falsche (bestellung|tuete|essen)|drink|getraenk)\b"),
+    # --- rider wants to hand the order back (be redispatched to another rider)
+    ("handback", 6, r"\b(i|ich|me|main)\b.{0,25}\b(want|wanna|will|moechte|need to|have to|muss)\b.{0,20}\b(cancel|storn\w*|abgeben|give (it )?back|drop|nicht (mehr )?warten|not wait)"),
+    ("handback", 5, r"\b(don'?t|do not|won'?t|not going to|can'?t|cannot)\b (want to |wanna )?wait\b"),
+    ("handback", 5, r"\b(will|moechte|kann)\b (nicht|nicht mehr|keine lust) (mehr )?(warten|lange warten)"),
+    ("handback", 6, r"\b(unassign\w*|reassign\w*|redispatch\w*|re-dispatch\w*|give (the |this |my )?order to (someone|somebody|another|other)|"
+                    r"take (this |the |my )?order (away|off|from me|back)|remove (the |this |my )?order|abgeben|neu vergeben|anderen fahrer|jemand anderem|wait nahi)\b"),
+    ("handback", 5, r"\b(please |pls |plz |bitte )?(cancel|stornier\w*) (my |this |the |meine |diese |die |den )?(order|bestellung|auftrag|tour)\b"),
     # --- cancelled / give back / what to do with the food
+    ("cancel", 3, C + r".{0,20}\b(cancel\w*|storn\w*|abgesagt|doesn'?t want|will .{0,10}nicht)"),
     ("cancel", 4, r"\b(cancel\w*|storn\w*|abgesagt|refused|lehnt .{0,10}ab|doesn'?t want|will .{0,10}nicht)\b"),
     ("cancel", 3, r"\b(what (should|do) i do with|was (soll|mache) ich mit|bring (it )?back|zurueck ?bringen|keep the food|essen behalten)\b"),
     # --- accident / emergency / vehicle
@@ -129,6 +137,8 @@ INTENT_LABEL = {
     "restaurant_no_order": "Restaurant has no order / closed",
     "problem_food": "Food damaged / missing / wrong",
     "cancel": "Cancel / what to do with the food",
+    "handback": "Rider wants to hand back the order (redispatch)",
+    "handback_done": "Hand-back confirmed to rider",
     "emergency": "Accident / bike / emergency",
     "app_problem": "App problem",
     "order_status": "Which order / status",
@@ -163,6 +173,15 @@ DEFAULT_TEMPLATES = {
     "cancel": {
         "en": "Hi {name}, our team is checking order {ref} and will tell you what to do with the food. Please wait for our reply here.",
         "de": "Hi {name}, unser Team prüft Bestellung {ref} und sagt dir, was mit dem Essen passiert. Bitte warte hier auf unsere Antwort."},
+    "handback": {
+        "en": "Okay {name}. Our team is taking order {ref} off you and giving it to another rider now.\nPlease wait here for the confirmation before you leave or accept a new order.",
+        "de": "Okay {name}. Unser Team nimmt dir Bestellung {ref} ab und gibt sie jetzt einem anderen Fahrer.\nBitte warte hier auf die Bestätigung, bevor du wegfährst oder eine neue Bestellung annimmst."},
+    "handback_picked": {
+        "en": "Hi {name}, you've already picked up order {ref}, so it can't go to another rider. Please deliver it — our team has your message and will reply here if needed.",
+        "de": "Hi {name}, du hast Bestellung {ref} schon abgeholt, deshalb kann sie nicht an einen anderen Fahrer gehen. Bitte liefere sie aus — unser Team hat deine Nachricht und meldet sich hier, falls nötig."},
+    "handback_done": {
+        "en": "Done ✅ Order {ref} has been taken off you. You're free for the next order.",
+        "de": "Erledigt ✅ Bestellung {ref} ist nicht mehr bei dir. Du bist frei für die nächste Bestellung."},
     "emergency": {
         "en": "Hi {name}, are you OK? If anyone is hurt, call 112 first. Our team has been alerted and will contact you right away.",
         "de": "Hi {name}, alles okay bei dir? Wenn jemand verletzt ist, ruf zuerst die 112 an. Unser Team ist informiert und meldet sich sofort bei dir."},
@@ -192,14 +211,16 @@ TEMPLATE_LABEL = {
     "cust_phone": "Customer not reachable — number available", "cust_wait": "Customer not reachable — team fetches number",
     "address_wait": "Address problem", "restaurant_wait": "Waiting at restaurant (short)",
     "restaurant_long": "Waiting at restaurant (too long)", "restaurant_no_order": "Restaurant has no order / closed",
-    "problem_food": "Food damaged / missing", "cancel": "Cancel / what to do with food", "emergency": "Accident / emergency",
+    "problem_food": "Food damaged / missing", "cancel": "Cancel / what to do with food",
+    "handback": "Rider wants to hand back order", "handback_picked": "Hand back — already picked up",
+    "handback_done": "Hand back confirmed (sent automatically when MotionTools shows it)", "emergency": "Accident / emergency",
     "app_problem": "App problem — first steps", "status": "Order status", "status_none": "Order status — none found",
     "shift_pay": "Shift / pay / admin", "ask_order": "Ask for order number", "greeting": "Greeting reply",
     "ack_unknown": "Unrecognised message (only if enabled)",
 }
 
 # Which intents need us to know the order
-NEEDS_ORDER = {"customer_unreachable", "address_problem", "restaurant_wait", "restaurant_no_order", "problem_food", "cancel"}
+NEEDS_ORDER = {"customer_unreachable", "address_problem", "restaurant_wait", "restaurant_no_order", "problem_food", "cancel", "handback"}
 # phase preference per intent (first match wins)
 PHASE_PREF = {
     "customer_unreachable": ["at_customer", "to_customer"],
@@ -208,6 +229,7 @@ PHASE_PREF = {
     "restaurant_no_order": ["at_restaurant", "to_restaurant", "accepted"],
     "problem_food": ["to_customer", "at_customer", "at_restaurant"],
     "cancel": ["at_customer", "to_customer", "at_restaurant"],
+    "handback": ["at_restaurant", "to_restaurant", "accepted", "to_customer", "at_customer"],
 }
 
 DEFAULT_SETTINGS = {
@@ -271,6 +293,7 @@ class Decision:
     reason: str = ""
     note: str = ""
     order_ref: str = ""
+    order_id: str = ""
     scores: dict = field(default_factory=dict)
 
 
@@ -301,6 +324,7 @@ def decide(text: str, *, rider: dict | None, how: str, live: list, recent: list,
         o = recent[0]                                   # just delivered/cancelled — still the likely subject
     ref = (o or {}).get("ref") or ("deine Bestellung" if lang == "de" else "your order")
     d.order_ref = (o or {}).get("ref") or ""
+    d.order_id = (o or {}).get("id") or ""
     rest = restaurant_name((o or {}).get("place_id")) or (o or {}).get("restaurant") or ("dem Restaurant" if lang == "de" else "the restaurant")
     kw = dict(name=first, ref=ref, restaurant=rest, phone=customer_phone)
 
@@ -336,6 +360,15 @@ def decide(text: str, *, rider: dict | None, how: str, live: list, recent: list,
         tpl, esc, reason = "problem_food", True, "food damaged / missing / wrong — decide what the rider does"
     elif intent == "cancel":
         tpl, esc, reason = "cancel", True, "cancel / what to do with the food"
+    elif intent == "handback":
+        if o and o.get("picked_up_at"):
+            tpl, esc, reason = "handback_picked", True, f"rider wants to hand back order {ref}, but it is ALREADY PICKED UP"
+        else:
+            waited = mins_since((o or {}).get("at_restaurant_at"), now) if (o or {}).get("at_restaurant_at") else 0
+            tpl, esc = "handback", True
+            reason = (f"REDISPATCH order {ref} in MotionTools — rider wants to hand it back"
+                      + (f" (waited {waited} min at the restaurant)" if waited else "")
+                      + ". The bot confirms to the rider automatically once MotionTools shows it off him")
     elif intent == "emergency":
         tpl, esc, urgent, reason = "emergency", True, True, "ACCIDENT / BIKE / EMERGENCY — contact the rider now"
     elif intent == "app_problem":

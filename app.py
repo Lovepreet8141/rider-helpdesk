@@ -31,13 +31,14 @@ from fastapi.security import HTTPBasic, HTTPBasicCredentials
 import brain
 from intercom import Intercom, signature_ok, strip_html
 from mt import MotionTools
+from robot import RobotMotionTools
 from store import Store
 from tracker import Tracker, phase_of, ts
 
 logging.basicConfig(level=logging.INFO)
 log = logging.getLogger("helpdesk")
 UTC = timezone.utc
-VERSION = "1.0"
+VERSION = "1.2"
 
 
 def env(k, d=""):
@@ -53,7 +54,9 @@ IC_SECRET = env("INTERCOM_CLIENT_SECRET")
 store = Store(str(DATA_DIR / "helpdesk.db"))
 tracker = Tracker(store)
 ic = Intercom(env("INTERCOM_TOKEN"), env("INTERCOM_REGION", "us"), env("INTERCOM_ADMIN_ID"))
-mt = MotionTools(env("MT_API_TOKEN"))
+ROBOT = bool(env("MT_ROBOT_EMAIL") and env("MT_ROBOT_PASSWORD"))
+mt = (RobotMotionTools(env("MT_ROBOT_EMAIL"), env("MT_ROBOT_PASSWORD"), int(env("MT_ROBOT_HOURLY_LIMIT", "40") or 40))
+      if ROBOT else MotionTools(env("MT_API_TOKEN")))
 app = FastAPI(title="Quickzi Rider Helpdesk")
 basic = HTTPBasic()
 STARTED = datetime.now(UTC)
@@ -143,7 +146,9 @@ def restaurant_name(place_id):
 
 def detail_state() -> str:
     if not mt.enabled:
-        return "no MotionTools token set"
+        return "no MotionTools robot login or token set"
+    if ROBOT and not mt.robot.get("signed_in"):
+        return "robot not signed in: " + (mt.robot.get("error") or "not tried yet")
     st = [mt.stats["endpoints"].get(k) for k in ("/api/bookings/{id}", "/api/hailing/bookings/{id}")]
     st = [x for x in st if x]
     return "booking detail: " + (", ".join(st) if st else "not tried yet")
@@ -287,6 +292,12 @@ async def handle(msg: dict, send: bool = True):
             actions.append("escalated" + (" URGENT" if d.urgent else ""))
         if not actions:
             actions.append("silent" + (f" ({d.reason})" if d.reason else ""))
+        if d.intent == "handback" and d.template == "handback" and d.order_id and rider:
+            pend = store.get("pending_handback", {}) or {}
+            pend[d.order_id] = {"conv": cid, "rider_id": rider["id"], "name": (rider.get("name") or "").split(" ")[0],
+                                "ref": d.order_ref, "lang": d.lang, "contact_id": contact.get("id"),
+                                "at": datetime.now(UTC).isoformat(timespec="seconds")}
+            store.put("pending_handback", pend)
         store.log(conversation_id=cid, contact_id=contact.get("id"), contact_name=contact.get("name"),
                   rider_id=(rider or {}).get("id"), rider=(rider or {}).get("name"), order_ref=d.order_ref,
                   city=tracker.city((rider or {}).get("area")), intent=d.intent, action=" + ".join(actions),
@@ -311,7 +322,46 @@ async def mt_webhook(secret: str, request: Request):
                 STATS["mt_events"] += 1
             except Exception as e:  # noqa: BLE001
                 err(f"MotionTools event failed: {e}")
+    if tracker.freed:
+        freed, tracker.freed = tracker.freed, []
+        try:
+            await confirm_handbacks(freed)
+        except Exception as e:  # noqa: BLE001
+            err(f"hand-back confirmation failed: {e}")
     return {"ok": True}
+
+
+async def confirm_handbacks(freed: list):
+    """MotionTools shows the order left the rider who asked to hand it back -> tell him he's free."""
+    pend = store.get("pending_handback", {}) or {}
+    if not pend:
+        return
+    changed = False
+    for oid, rid in freed:
+        p = pend.get(oid)
+        if not p or p["rider_id"] != rid:
+            continue
+        pend.pop(oid)
+        changed = True
+        if ts(p["at"]) and datetime.now(UTC) - ts(p["at"]) > timedelta(hours=3):
+            continue
+        s = settings()
+        text = brain.render(templates(), "handback_done", p.get("lang") or "en", name=p.get("name") or "", ref=p.get("ref") or "")
+        action = "silent (bot switched off)"
+        if s.get("bot_on", True):
+            resp = await ic.reply(p["conv"], text)
+            remember_bot_part(resp)
+            action = "auto-reply (hand-back confirmed)" if resp is not None else "reply FAILED"
+        o = tracker.orders.get(oid) or {}
+        store.log(conversation_id=p["conv"], contact_id=p.get("contact_id"), rider_id=rid,
+                  rider=(tracker.riders.get(rid) or {}).get("name"), order_ref=p.get("ref"),
+                  city=tracker.city(o.get("area")), intent="handback_done", action=action,
+                  message="[MotionTools: order taken off the rider]", reply=text if s.get("bot_on", True) else "", lang=p.get("lang"))
+    for oid in [k for k, v in pend.items() if ts(v.get("at")) and datetime.now(UTC) - ts(v["at"]) > timedelta(hours=3)]:
+        pend.pop(oid)
+        changed = True
+    if changed:
+        store.put("pending_handback", pend)
 
 
 @app.post("/intercom/{secret}")
@@ -398,7 +448,9 @@ async def state():
             "live_orders": sum(1 for o in tracker.orders.values() if phase_of(o) in ("waiting", "accepted", "to_restaurant", "at_restaurant", "to_customer", "at_customer")),
             "riders_known": len(tracker.riders), "ic_events": STATS["ic_events"], "ic_last": STATS["ic_last"],
             "rejected": {"mt": STATS["mt_rejected"], "intercom": STATS["ic_rejected"]},
-            "mt_token": mt.enabled, "mt_endpoints": mt.endpoint_summary(), "detail_fetches": STATS["detail_fetch"],
+            "mt_token": mt.enabled, "mt_endpoints": mt.endpoint_summary(),
+            "robot": ({**mt.robot, "email": env("MT_ROBOT_EMAIL"), "hourly_limit": mt.hourly_limit,
+                       "used_last_hour": len(mt.calls_this_hour)} if ROBOT else None), "detail_fetches": STATS["detail_fetch"],
             "errors": STATS["errors"], "started": STARTED.isoformat(timespec="seconds"),
             "outbox": list(ic.outbox)[:40],
         },
@@ -496,6 +548,9 @@ async def startup():
         await ic.me()
         if not ic.admin_id:
             err("Intercom: could not read the admin id — set INTERCOM_ADMIN_ID")
+    if ROBOT:
+        ok = await mt.signin()
+        log.info("MotionTools robot sign-in %s", "ok" if ok else "FAILED: " + str(mt.robot.get("error")))
     asyncio.create_task(housekeeping())
     log.info("Rider helpdesk %s up — Intercom %s, MotionTools token %s", VERSION, "dry run" if ic.dry else "live",
              "set" if mt.enabled else "not set")

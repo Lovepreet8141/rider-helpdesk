@@ -79,6 +79,7 @@ class Tracker:
         self.tours: dict = self.store.get("tours", {}) or {}
         self.counts: dict = {}
         self.last_event = None
+        self.freed: list = []          # (order_id, rider_id) — order left this rider (hand-back / redispatch / cancel)
         for o in store.load("orders", since_hours=36):
             self.orders[o["id"]] = o
         for r in store.load_all_riders():
@@ -107,6 +108,7 @@ class Tracker:
         if name and not r["name"]:
             r["name"] = name
         if o.get("rider_id") and o["rider_id"] != rid:
+            self.freed.append((o["id"], o["rider_id"]))
             o["riders_before"].append(o["rider_id"])
             for k in ("accepted_at", "started_at", "at_restaurant_at"):
                 o[k] = None
@@ -121,6 +123,7 @@ class Tracker:
 
     def handback(self, o: dict):
         if o.get("rider_id"):
+            self.freed.append((o["id"], o["rider_id"]))
             o["riders_before"].append(o["rider_id"])
         o["rider_id"], o["rider"] = None, ""
         for k in ("accepted_at", "started_at", "at_restaurant_at"):
@@ -170,6 +173,8 @@ class Tracker:
                     o["delivered_at"] = o.get("delivered_at") or iso(now)
                 elif to == "cancelled":
                     o["cancelled"] = True
+                    if o.get("rider_id"):
+                        self.freed.append((o["id"], o["rider_id"]))
                 elif to in DISPATCHED:
                     o["dispatched_at"] = o.get("dispatched_at") or iso(now)
                     if to == "pickable" and o.get("rider_id") and not o.get("picked_up_at"):

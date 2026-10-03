@@ -156,7 +156,26 @@ ic("conversation.user.replied", "c-2", "ct-ahmed", "Ahmed Fauzi", "ok danke", pa
 h = last("c-2")
 check("Thanks: no reply, no escalation", h["intent"] == "thanks" and h["action"].startswith("silent"), h)
 
-# 11. Dashboard + preview endpoint
+# 11. Hand-back: Ahmed doesn't want to wait -> team told to redispatch; MotionTools shows it off him -> bot confirms
+ic("conversation.user.created", "c-7", "ct-ahmed", "Ahmed Fauzi", "I don't want to wait anymore, give the order to someone else")
+h = last("c-7")
+check("Hand-back detected on the right order", h["intent"] == "handback" and h["order_ref"] == "WPC4W7", h)
+check("Hand-back: rider told + team asked to REDISPATCH", "auto-reply" in h["action"] and "escalated" in h["action"]
+      and "REDISPATCH order WPC4W7" in h["note"], h)
+check("Hand-back waiting for MotionTools", "b-1" in (A.store.get("pending_handback") or {}))
+mt("booking", "transition", {"booking_id": "b-1", "to": "pickable"}, 0)        # team redispatched in MotionTools
+h = last("c-7")
+check("Bot confirms to rider when MotionTools releases the order", h["intent"] == "handback_done" and "WPC4W7" in h["reply"]
+      and h["action"].startswith("auto-reply"), h)
+check("Order no longer on Ahmed", not A.tracker.live_orders_of("d-ahmed"))
+check("Pending cleared", "b-1" not in (A.store.get("pending_handback") or {}))
+
+# 12. Hand-back after pickup -> told to deliver, team informed
+ic("conversation.user.created", "c-8", "ct-karan", "Karan Singh", "take this order off me please")
+h = last("c-8")
+check("Hand-back after pickup: deliver it + team informed", "already picked up" in h["reply"] and "escalated" in h["action"], h)
+
+# 13. Dashboard + preview endpoint
 s = c.get("/api/state", auth=AUTH).json()
 check("Dashboard state loads", s["today"]["total"] >= 8 and len(s["riders"]) == 3, s["today"])
 p = c.post("/api/test", auth=AUTH, json={"text": "app not working cant swipe", "rider_id": "d-karan"}).json()

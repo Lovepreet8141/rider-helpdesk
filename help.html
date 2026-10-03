@@ -72,6 +72,8 @@
           <option>App not working, I can't swipe to complete</option>
           <option>Which order do I have?</option>
           <option>The drink is spilled in the bag</option>
+          <option>I don't want to wait anymore, please give the order to someone else</option>
+          <option>Ich will nicht mehr warten, bitte Auftrag abgeben</option>
           <option>I had an accident</option>
           <option>When is the salary paid?</option>
         </select></div>
@@ -243,6 +245,7 @@ function renderSystem(){
    <tr><td>Intercom errors</td><td>${y.intercom_errors}${y.intercom_last_error ? '<pre>' + esc(y.intercom_last_error) + '</pre>' : ''}</td></tr>
    <tr><td>MotionTools webhook</td><td>${y.mt_events} events · last ${dt(y.last_mt_event)} · ${y.orders_tracked} orders (${y.live_orders} live) · ${y.riders_known} riders${y.rejected.mt ? ' · <span class="bad">' + y.rejected.mt + ' rejected</span>' : ''}</td></tr>
    <tr><td>MotionTools API</td><td>${y.mt_token ? esc(y.mt_endpoints) : 'no token — webhooks only'} · customer lookups ${y.detail_fetches} <button onclick="probe()">Re-check</button></td></tr>
+   <tr><td>MotionTools robot</td><td>${y.robot ? (y.robot.signed_in ? '<span class="ok">signed in</span>' : '<span class="bad">not signed in</span>') + ' as ' + esc(y.robot.email) + ' · ' + y.robot.lookups + ' customer lookups · ' + y.robot.used_last_hour + '/' + y.robot.hourly_limit + ' this hour' + (y.robot.error ? '<pre>' + esc(y.robot.error) + '</pre>' : '') : '<span class="muted">off — set MT_ROBOT_EMAIL + MT_ROBOT_PASSWORD</span>'}</td></tr>
    <tr><td>Event types</td><td class="muted">${Object.entries(y.mt_event_types).map(([k,v]) => esc(k) + ' ' + v).join(' · ') || '—'}</td></tr>
    <tr><td>Running since</td><td>${dt(y.started)} · v${esc(S.version)}</td></tr></table>
    ${y.errors.length ? '<h2>Errors</h2>' + y.errors.map(e => `<div class="muted">${dt(e.at)} <span class="bad">${esc(e.msg)}</span></div>`).join('') : ''}`;
